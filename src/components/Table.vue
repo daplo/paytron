@@ -4,10 +4,8 @@
       <div class="col-12 col-lg-8">
         <div class="row">
           <div class="col-12">
-            <!-- disabled due to lack of time - would have to switch currency pairs
              <h4>I would like to</h4>
-            -->
-            <!--div
+            <div
               class="btn-group mt-2"
               role="group"
               aria-label="Basic radio toggle button group"
@@ -21,6 +19,7 @@
                 checked
                 v-model="buyOrSell"
                 value="Buy"
+                 @change="onChange($event)"
               />
               <label class="btn btn-outline-primary" for="btnradio1">Buy</label>
 
@@ -32,11 +31,13 @@
                 autocomplete="off"
                 v-model="buyOrSell"
                 value="Sell"
+                 @change="onChange($event)"
+                 disabled
               />
               <label class="btn btn-outline-primary" for="btnradio2"
                 >Sell</label
               >
-            </div -->
+            </div>
           </div>
         </div>
 
@@ -127,20 +128,18 @@
         </div>
         <div class="row">
           <div class="col-12">
-            <strong>Sell: </strong> {{formatCurrency(currencyAmount, firstCurrency)}}
+            <strong>{{this.buyOrSell}}: </strong> {{formatCurrency(currencyAmount, firstCurrency)}}
           </div>
            <div class="col-12">
-            <strong>Buy: </strong> {{formatCurrency(sellAmount, secondCurrency)}}
+            <strong>{{this.buyOrSell === "Buy" ? "Sell" : "Buy"}}</strong> {{formatCurrency(sellAmount, secondCurrency)}}
           </div>
            <div class="col-12">
             <strong>Paytrons Fee:  </strong> {{formatCurrency(sellAmount * paytronMarkup, secondCurrency)}} ({{paytronMarkup * 100}}%)
           </div>
-
           <div class="col-12 mt-1">
             <hr>
-            <h4>
-                 <strong>Total:  </strong> {{formatCurrency(sellAmount - sellAmount * paytronMarkup , secondCurrency)}} ({{paytronMarkup * 100}}%)
-            </h4>
+            <h4 v-if="buyOrSell === 'Buy' ">Total Receive:  {{formatCurrency(currencyAmount - sellAmount * paytronMarkup , secondCurrency)}}  </h4>
+            <h4 v-if="buyOrSell === 'Sell' ">Total Receive:  {{formatCurrency(sellAmount - sellAmount * paytronMarkup , secondCurrency)}}  </h4>
           </div>
         </div>
       </div>
@@ -150,6 +149,7 @@
       <div class="col-12">
         <h5>Raw Results</h5>
         <hr />
+        <strong>{{url}}</strong><br/>
         {{ info }}
       </div>
     </div>
@@ -171,13 +171,14 @@ export default {
       info: null,
       firstCurrency: "AUD",
       secondCurrency: "USD",
-      buyOrSell: "Sell",
+      buyOrSell: "Buy",
       currencyAmount: 1000,
       currencies: ["AUD", "EUR", "USD", "GBP"],
       paytronMarkup: 0.005,
       paytronMarkupAmount: 0,
       isLoading: false,
-      sellAmount: null
+      sellAmount: null,
+      url: null
     };
   },
   methods: {
@@ -185,16 +186,21 @@ export default {
       const _self = this;
       const firstLabel = this.buyOrSell;
       const secondLabel = this.buyOrSell === "Buy" ? "Sell" : "Buy";
+
       this.isLoading = true;
       this.sellAmount = null
-
+      const url = `https://wnvgqqihv6.execute-api.ap-southeast-2.amazonaws.com/Public/public/rates?${firstLabel}=${_self.firstCurrency}&Amount=${_self.currencyAmount}&${secondLabel}=${_self.secondCurrency}&Fixed=${_self.buyOrSell}`;
+      this.url = url;
       axios
-        .get(
-          `https://wnvgqqihv6.execute-api.ap-southeast-2.amazonaws.com/Public/public/rates?${firstLabel}=${_self.firstCurrency}&Amount=${_self.currencyAmount}&${secondLabel}=${_self.secondCurrency}&Fixed=Sell`
-        )
+        .get(url)
         .then((response) => {
           this.info = response.data;
-          this.sellAmount = response.data.clientBuyAmount;
+         
+          if(_self.buyOrSell === "Buy") {
+             this.sellAmount = response.data.clientSellAmount;
+          } else {
+             this.sellAmount = response.data.clientBuyAmount;
+          }
           }
         )
         .catch((error) => {
